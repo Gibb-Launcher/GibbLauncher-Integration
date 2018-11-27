@@ -113,11 +113,8 @@ def start_request():
     # Assynchronous
     # TODO add Thread to execute this block
     # TODO add hawkeye analyses here
-    # analyze = AsynchronousAnalyze(new_training)
-    # analyze.start()
-    savePositions(new_training.id_training) # TODO pass bounce locations in this method
-    time.sleep(1)
-    create_socket_notification(new_training.id_training, new_training.mac)
+    analyze = AsynchronousAnalyze(new_training)
+    analyze.start()
 
 
     response = 'Ok'
@@ -264,7 +261,7 @@ class AsynchronousAnalyze(Thread):
         super(AsynchronousAnalyze, self).__init__()
 
     def run(self):
-      # self.result = self.analyze_all_videos()
+      self.result = self.analyze_all_videos()
 
       print("----------------")
       savePositions(self.new_training.id_training)
