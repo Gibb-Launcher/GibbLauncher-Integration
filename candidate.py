@@ -70,6 +70,7 @@ def check_radius(a, b, c, next_neighbors, actual_node, before_node, b_before_nod
                     dist_r = calc_distance(
                         predict,  is_parabola[neighbor.data[2]])
                     dist_n = calc_distance(predict, neighbor)
+                    print(dist_r)
                     if dist_r > dist_n:
                         is_parabola[neighbor.data[2]] = neighbor
                 else:

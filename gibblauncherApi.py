@@ -1,4 +1,5 @@
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 from flask import Flask, jsonify, request
 from datetime import datetime
 import time
@@ -7,17 +8,18 @@ import os
 import socket
 from threading import Thread
 from hawkeye import AnalyzeVideo
-#import uart_communication
+# import uart_communication
 
 
 IP_MUTEX = None
 app = Flask(__name__)
 basedir = basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'gibb.db')
-db = SQLAlchemy(app)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + \
+    os.path.join(basedir, 'gibb.db')
+db = SQLAlchemy(app,session_options={"autoflush": False, "autocommit": False, "expire_on_commit": False})
 db.create_all()
 
-dictionary_shots_position = {(3, 'Forehand Cruzado - Longo'): 'a', 
+dictionary_shots_position = {(3, 'Forehand Cruzado - Longo'): 'a',
                              (3, 'Backhand Cruzado - Centro'): 'b',
                              (3, 'Backhand Paralelo - Longo'): 'c',
                              (3, 'Forehand Cruzado - Curto'): 'd',
@@ -33,32 +35,40 @@ dictionary_shots_position = {(3, 'Forehand Cruzado - Longo'): 'a',
                              (1, 'Forehand Paralelo - Curto'): 'n',
                              (1, 'Backhand Cruzado - Curto'): 'o'}
 
+
 class Training(db.Model):
   __tablename__ = "training"
   id_training = db.Column(db.Integer, primary_key=True)
   id_trainingResult = db.Column(db.Integer, nullable=False)
   mac = db.Column(db.String(20), nullable=False)
   ip = db.Column(db.String(15), nullable=False)
-  postions = db.relationship('PositionShot', backref='training_positionShot', lazy=True)
+  postions = db.relationship(
+      'PositionShot', backref='training_positionShot', lazy=True)
+
 
 class PositionShot(db.Model):
   __tablename__ = "positionShot"
   id_positionShot = db.Column(db.Integer, primary_key=True)
-  training_id = db.Column(db.Integer, db.ForeignKey('training.id_training'), nullable=False)
+  training_id = db.Column(db.Integer, db.ForeignKey(
+      'training.id_training'), nullable=False)
   postiionX = db.Column(db.Integer, nullable=False)
   postiionY = db.Column(db.Integer, nullable=False)
+
 
 @app.route('/positions', methods=['GET'])
 def getTrainingResult():
   mac = request.args.get('mac', None)
-  id_trainingResult = request.args.get('training', None)
+  id_trainingResult = request.args.get('id_trainingResult', None)
+  print('===============GET=====================\n')
+  print(mac, id_trainingResult)
+  print('====================================\n')
 
   JSON_ = getJsonPositions(mac, id_trainingResult)
-  
+
   """
     {
         'id_trainingResult': 1,
-        
+
         'bounces': [
           {
             'x': 50,
@@ -73,6 +83,7 @@ def getTrainingResult():
   """
   return jsonify(JSON_)
 
+
 @app.route('/', methods=['POST'])
 def start_request():
   global IP_MUTEX
@@ -81,45 +92,51 @@ def start_request():
   print(request.json)
   print('\n======================================\n')
   if IP_MUTEX == None or IP_MUTEX == requestIP or isAvailable != 0:
-    
+
     IP_MUTEX = requestIP
     new_training = saveTraining(request)
     listOfPlay = getConvertShots(request)
 
-    # Synchronous  
+    # Synchronous
     # Methdo to call uart communicatio and pass position
     # responsePosition = uart_communication.uart_communication_position(str(request.get_json()['launcherPosition']))
-        
+
     # if(responsePosition == True):
     #     for play in listOfPlay:
     #         print(play)
     #         sendPlays(play)
     #         print('FOI?')
     #         time.sleep(3)
-    
-    #TODO recording video from shots
 
-    
+    # TODO recording video from shots
+
     # Assynchronous
-    #TODO add Thread to execute this block
-    #TODO add hawkeye analyses here
-    analyze = AsynchronousAnalyze(new_training)
-    analyze.start()
-    
+    # TODO add Thread to execute this block
+    # TODO add hawkeye analyses here
+    # analyze = AsynchronousAnalyze(new_training)
+    # analyze.start()
+    savePositions(new_training.id_training) # TODO pass bounce locations in this method
+    time.sleep(1)
+    create_socket_notification(new_training.id_training, new_training.mac)
+
+
     response = 'Ok'
 
       # TODO Change local
-    
-  else :
+
+  else:
     response = 'Fail'
     print("Ocupado...")
 
   return jsonify(response)
 
-def getJsonPositions(mac, id_trainingResult):
-  training_ = Training.query.filter(Training.id_trainingResult==id_trainingResult, Training.mac==str(mac)).first()
 
-  list_positionsShot_ = PositionShot.query.filter_by(training_id=training_.id_training).all()
+def getJsonPositions(mac, id_trainingResult):
+  training_ = Training.query.filter(
+      Training.id_trainingResult == id_trainingResult, Training.mac == str(mac)).first()
+  list_positionsShot_ = PositionShot.query.filter_by(
+      training_id=training_.id_training).all()
+
 
   response_bounces = {
         'id_trainingResult': training_.id_trainingResult,
@@ -171,6 +188,7 @@ def getJsonPositions(mac, id_trainingResult):
   print("\n====================================================\n")
   return response_bounces
 
+
 def sendPlays(play):
     # responseShot = uart_communication.uart_communication_shot(play)
     # if(responseShot == True):
@@ -179,12 +197,13 @@ def sendPlays(play):
     #     sendPlays(play)
     return True
 
+
 def getConvertShots(request):
   position = request.get_json()['launcherPosition']
   listOfShots = request.get_json()['shots']
-  #List shots
-  #print(listOfShots)
-  
+  # List shots
+  # print(listOfShots)
+
   listOfConvertShots = []
 
   for shot in listOfShots:
@@ -195,10 +214,12 @@ def getConvertShots(request):
 
   return listOfConvertShots
 
-def isAvailable() :
+
+def isAvailable():
   response = os.system("ping -c 1 " + IP_MUTEX)
   # print("Response ping: " + str(response))
   return response
+
 
 def savePositions(id_trainingResult):
   for i in range(10):
@@ -207,7 +228,7 @@ def savePositions(id_trainingResult):
     position_.postiionX = random.randint(-100,100)
     position_.postiionY = random.randint(-100,100)
 
-    #Save in Database
+    # Save in Database
     db.session.add(position_)
     db.session.commit()
 
@@ -220,14 +241,14 @@ def saveTraining(request):
   new_training.mac = MAC
   new_training.ip = ip_
 
-  #Save in Database
+  # Save in Database
   db.session.add(new_training)
   db.session.commit()
-
   return new_training
 
 def create_socket_notification(id_training, mac):
   try:
+    print(id_training)
     s = socket.socket()
     s.connect((IP_MUTEX , 4444))
     response = "Você é um batatão! Errou quase Tudo.;"+ mac + ";" + str(id_training)
@@ -243,7 +264,9 @@ class AsynchronousAnalyze(Thread):
         super(AsynchronousAnalyze, self).__init__()
 
     def run(self):
-      self.result = self.analyze_all_videos()
+      # self.result = self.analyze_all_videos()
+
+      print("----------------")
       savePositions(self.new_training.id_training)
       create_socket_notification(self.new_training.id_training, self.new_training.mac)
 
