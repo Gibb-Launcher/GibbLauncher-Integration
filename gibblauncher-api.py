@@ -224,7 +224,18 @@ def saveTraining(request):
   db.session.add(new_training)
   db.session.commit()
 
-  return new_training 
+  return new_training
+
+def create_socket_notification(id_training, mac):
+  try:
+    s = socket.socket()
+    s.connect((IP_MUTEX , 4444))
+    response = "Você é um batatão! Errou quase Tudo.;"+ mac + ";" + str(id_training)
+    s.send(response.encode())
+    s.close()
+  except Exception as e:
+
+    print('Erro no socket' + str(e))
 
 class AsynchronousAnalyze(Thread):
     def __init__(self, new_training):
@@ -234,7 +245,7 @@ class AsynchronousAnalyze(Thread):
     def run(self):
       self.result = self.analize_all_videos()
       savePositions(self.new_training.id_training)
-      create_socket_notification()
+      create_socket_notification(self.new_training.id_training, self.new_training.mac)
 
     def analize_all_videos(self):
         list_results = []
@@ -252,15 +263,6 @@ class AsynchronousAnalyze(Thread):
                 list_results.append(thread.candidate)
 
         return list_results
-
-def create_socket_notification():
-  try:
-    s = socket.socket()
-    s.connect((IP_MUTEX , 4444))
-    s.send("Você é um batatão! Errou quase Tudo.".encode())
-    s.close()  
-  except:
-    print('Erro no socket')
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
