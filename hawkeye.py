@@ -84,7 +84,6 @@ class AnalizeVideo(Thread):
             if frame is None:
                 break
             if ret == True:
-                frame = imutils.resize(frame, width=800, height=600)
                 fgmask = cv2.GaussianBlur(frame, (5, 5), 0)
 
                 fgmask = cv2.morphologyEx(
@@ -112,17 +111,29 @@ class AnalizeVideo(Thread):
         return candidate.start_verification(candidates)
 
 
-def analize_all_videos():
-    thread_list = []
+class AsynchronousAnalize(Thread):
+    def __init__(self):
+        super(AsynchronousAnalize, self).__init__()
 
-    for i in range(1, 10):
-        thread_list.append(AnalizeVideo('../Dia23/video00{}.h264'.format(i)))
-    
-    for index, thread in enumerate(thread_list):
-        thread.start()
+    def run(self):
+       self.result = self.analize_all_videos()
 
-    for index, thread in enumerate(thread_list):
-        thread.join()
+    def analize_all_videos(self):
+        list_results = []
+
+        for k in range(1, 10, 2):
+            thread_list = []
+            for i in range(k, k+2):
+                thread_list.append(AnalizeVideo('../Dia23/video{}.h264'.format(i)))
+            
+            for index, thread in enumerate(thread_list):
+                thread.start()
+
+            for index, thread in enumerate(thread_list):
+                thread.join()
+                list_results.append(thread.candidate)
+
+        return list_results
 
 def map_homography_point(bounce_x,bounce_y):
     pts1 = np.float32([[219, 351], [545, 365], [10, 490], [793, 512]])
@@ -145,17 +156,17 @@ def map_homography_point(bounce_x,bounce_y):
 
 
 if __name__ == '__main__':
-<<<<<<< HEAD
-    analize_all_videos()
-=======
-    candidate = analize_video('videos/video002.h264')
-    if candidate is not None:
-        #print("O candidato esta no frame :{}.\nEle é: {}".format(candidate[0][0], candidate[0][1]))
-        bounce_x = float(candidate[0][1][0][0])
-        bounce_y = float(candidate[0][1][0][1])
+    init = AsynchronousAnalize()
+    init.start()
 
-        homography_point = map_homography_point(bounce_x,bounce_y)
-        print(homography_point)
-    else:
-        print("Provavelmente não houve quique!")
->>>>>>> d049c7c57e3edce776555f1b4b89cc938906d844
+
+    # candidate = analize_video('videos/video002.h264')
+    # if candidate is not None:
+    #     #print("O candidato esta no frame :{}.\nEle é: {}".format(candidate[0][0], candidate[0][1]))
+    #     bounce_x = float(candidate[0][1][0][0])
+    #     bounce_y = float(candidate[0][1][0][1])
+
+    #     homography_point = map_homography_point(bounce_x,bounce_y)
+    #     print(homography_point)
+    # else:
+    #     print("Provavelmente não houve quique!")
