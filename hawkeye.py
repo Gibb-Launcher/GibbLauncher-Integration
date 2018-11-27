@@ -47,14 +47,14 @@ def check_movement(shadow_frame, frame, balls_traking, timestamp):
         balls_traking.append([int(point[0]), int(point[1]), int(point[2])])
 
 
-class AnalizeVideo(Thread):
+class AnalyzeVideo(Thread):
     def __init__(self, video_path):
         self.candidate = None
         self.video_path = video_path
-        super(AnalizeVideo, self).__init__()
+        super(AnalyzeVideo, self).__init__()
 
     def run(self):
-        self.candidate = self.analize_video()
+        self.candidate = self.analyze_video()
 
         if self.candidate is not None:
             print("O candidato esta no frame :{}.\nEle é: {}".format(
@@ -62,7 +62,7 @@ class AnalizeVideo(Thread):
         else:
             print("Provavelmente não houve quique!")
 
-    def analize_video(self):
+    def analyze_video(self):
         # read video file
         cap = cv2.VideoCapture(self.video_path)
 
@@ -111,37 +111,13 @@ class AnalizeVideo(Thread):
         return candidate.start_verification(candidates)
 
 
-class AsynchronousAnalize(Thread):
-    def __init__(self):
-        super(AsynchronousAnalize, self).__init__()
-
-    def run(self):
-       self.result = self.analize_all_videos()
-
-    def analize_all_videos(self):
-        list_results = []
-
-        for k in range(1, 10, 2):
-            thread_list = []
-            for i in range(k, k+2):
-                thread_list.append(AnalizeVideo('../Dia23/video{}.h264'.format(i)))
-            
-            for index, thread in enumerate(thread_list):
-                thread.start()
-
-            for index, thread in enumerate(thread_list):
-                thread.join()
-                list_results.append(thread.candidate)
-
-        return list_results
-
-def map_homography_point(bounce_x,bounce_y):
+def map_homography_point(bounce_x, bounce_y):
     pts1 = np.float32([[219, 351], [545, 365], [10, 490], [793, 512]])
     pts2 = np.float32([[0, 0], [800, 0], [0, 600], [800, 600]])
 
     # Ambos dão o mesmo resultado
     matrixH = cv2.getPerspectiveTransform(pts1, pts2)
-    bounce_coord = np.array( [ [float(bounce_x)],[float(bounce_y)],[1.0] ] ) 
+    bounce_coord = np.array([[float(bounce_x)], [float(bounce_y)], [1.0]])
 
     xa = matrixH
     xb = bounce_coord
@@ -151,16 +127,16 @@ def map_homography_point(bounce_x,bounce_y):
     xx = (resulting_matrix[0][0]/resulting_matrix[2][0])
     yy = (resulting_matrix[1][0]/resulting_matrix[2][0])
 
-    homography_coord = [xx,yy]
+    homography_coord = [xx, yy]
     return homography_coord
 
 
 if __name__ == '__main__':
-    init = AsynchronousAnalize()
-    init.start()
+    # init = AsynchronousAnalyze()
+    # init.start()
+    pass
 
-
-    # candidate = analize_video('videos/video002.h264')
+    # candidate = analyze_video('videos/video002.h264')
     # if candidate is not None:
     #     #print("O candidato esta no frame :{}.\nEle é: {}".format(candidate[0][0], candidate[0][1]))
     #     bounce_x = float(candidate[0][1][0][0])

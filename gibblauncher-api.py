@@ -1,13 +1,22 @@
+from flask_sqlalchemy import SQLAlchemy
 from flask import Flask, jsonify, request
+from datetime import datetime
 import time
 import random
 import os
-import hawkeye
-import uart_communication
+import socket
+from threading import Thread
+from hawkeye import AnalyzeVideo
+#import uart_communication
 
 
 IP_MUTEX = None
 app = Flask(__name__)
+basedir = basedir = os.path.abspath(os.path.dirname(__file__))
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'gibb.db')
+db = SQLAlchemy(app)
+db.create_all()
+
 dictionary_shots_position = {(3, 'Forehand Cruzado - Longo'): 'a', 
                              (3, 'Backhand Cruzado - Centro'): 'b',
                              (3, 'Backhand Paralelo - Longo'): 'c',
@@ -24,158 +33,234 @@ dictionary_shots_position = {(3, 'Forehand Cruzado - Longo'): 'a',
                              (1, 'Forehand Paralelo - Curto'): 'n',
                              (1, 'Backhand Cruzado - Curto'): 'o'}
 
-@app.route('/', methods=['GET'])
-def hello():
-  return jsonify({'data': "Get Confirm!"})
+class Training(db.Model):
+  __tablename__ = "training"
+  id_training = db.Column(db.Integer, primary_key=True)
+  id_trainingResult = db.Column(db.Integer, nullable=False)
+  mac = db.Column(db.String(20), nullable=False)
+  ip = db.Column(db.String(15), nullable=False)
+  postions = db.relationship('PositionShot', backref='training_positionShot', lazy=True)
 
-def sendPlays(play):
-    responseShot = uart_communication.uart_communication_shot(play)
-    if(responseShot == True):
-        return True
-    else:
-        sendPlays(play)
+class PositionShot(db.Model):
+  __tablename__ = "positionShot"
+  id_positionShot = db.Column(db.Integer, primary_key=True)
+  training_id = db.Column(db.Integer, db.ForeignKey('training.id_training'), nullable=False)
+  postiionX = db.Column(db.Integer, nullable=False)
+  postiionY = db.Column(db.Integer, nullable=False)
+
+@app.route('/positions', methods=['GET'])
+def getTrainingResult():
+  mac = request.args.get('mac', None)
+  id_trainingResult = request.args.get('training', None)
+
+  JSON_ = getJsonPositions(mac, id_trainingResult)
+  
+  """
+    {
+        'id_trainingResult': 1,
+        
+        'bounces': [
+          {
+            'x': 50,
+            'y': 17,
+          },
+          {
+            'x': 25,
+            'y': 10,
+          },
+        ]
+    }
+  """
+  return jsonify(JSON_)
 
 @app.route('/', methods=['POST'])
 def start_request():
   global IP_MUTEX
   requestIP = str(request.get_json()['ip'])
-
-  if IP_MUTEX == None or IP_MUTEX == requestIP:
-    # print("IP_MUTEX = " + str(IP_MUTEX))
+  print('===============POST=====================\n')
+  print(request.json)
+  print('\n======================================\n')
+  if IP_MUTEX == None or IP_MUTEX == requestIP or isAvailable != 0:
+    
     IP_MUTEX = requestIP
-    listOfPlay = getPlay(request)
+    new_training = saveTraining(request)
+    listOfPlay = getConvertShots(request)
 
-    #TODO put method call file C passing listOfPlay
-    responsePosition = uart_communication.uart_communication_position(str(request.get_json()['launcherPosition']))
+    # Synchronous  
+    # Methdo to call uart communicatio and pass position
+    # responsePosition = uart_communication.uart_communication_position(str(request.get_json()['launcherPosition']))
         
-    if(responsePosition == True):
-        for play in listOfPlay:
-            print(play)
-            sendPlays(play)
-            print('FOI?')
-            time.sleep(3)
+    # if(responsePosition == True):
+    #     for play in listOfPlay:
+    #         print(play)
+    #         sendPlays(play)
+    #         print('FOI?')
+    #         time.sleep(3)
+    
+    #TODO recording video from shots
 
-    response = set_players()
+    
+    # Assynchronous
+    #TODO add Thread to execute this block
+    #TODO add hawkeye analyses here
+    analize = AsynchronousAnalyze(new_training)
+    analize.start()
+    
+    response = 'Ok'
+
+      # TODO Change local
+    
   else :
-    response = checkIp(requestIP)
+    response = 'Fail'
+    print("Ocupado...")
 
   return jsonify(response)
 
+def getJsonPositions(mac, id_trainingResult):
+  training_ = Training.query.filter(Training.id_trainingResult==id_trainingResult, Training.mac==str(mac)).first()
 
-def getPlay(request):
+  list_positionsShot_ = PositionShot.query.filter_by(training_id=training_.id_training).all()
+
+  response_bounces = {
+        'id_trainingResult': training_.id_trainingResult,
+        'bounces': [
+            {
+              'x': list_positionsShot_[0].postiionX,
+              'y': list_positionsShot_[0].postiionY,
+            },
+            {
+              'x': list_positionsShot_[1].postiionX,
+              'y': list_positionsShot_[1].postiionY,
+            },
+            {
+              'x': list_positionsShot_[2].postiionX,
+              'y': list_positionsShot_[2].postiionY,
+            },
+            {
+              'x': list_positionsShot_[3].postiionX,
+              'y': list_positionsShot_[3].postiionY,
+            },
+            {
+              'x': list_positionsShot_[4].postiionX,
+              'y': list_positionsShot_[4].postiionY,
+            },
+            {
+              'x': list_positionsShot_[5].postiionX,
+              'y': list_positionsShot_[5].postiionY,
+            },
+            {
+              'x': list_positionsShot_[6].postiionX,
+              'y': list_positionsShot_[6].postiionY,
+            },
+            {
+              'x': list_positionsShot_[7].postiionX,
+              'y': list_positionsShot_[7].postiionY,
+            },
+            {
+              'x': list_positionsShot_[8].postiionX,
+              'y': list_positionsShot_[8].postiionY,
+            },
+            {
+              'x': list_positionsShot_[9].postiionX,
+              'y': list_positionsShot_[9].postiionY,
+            },
+        ]
+    }
+  print("===============BOUNCE LOCATION======================\n")
+  print(response_bounces)
+  print("\n====================================================\n")
+  return response_bounces
+
+def sendPlays(play):
+    # responseShot = uart_communication.uart_communication_shot(play)
+    # if(responseShot == True):
+    #     return True
+    # else:
+    #     sendPlays(play)
+    return True
+
+def getConvertShots(request):
   position = request.get_json()['launcherPosition']
-  
   listOfShots = request.get_json()['shots']
+  #List shots
+  #print(listOfShots)
   
   listOfConvertShots = []
 
   for shot in listOfShots:
     listOfConvertShots.append(dictionary_shots_position.get((position, shot)))
 
-  print(listOfConvertShots)
+  # List convert shots
+  # print(listOfConvertShots)
 
   return listOfConvertShots
-
-def checkIp(requestIP):
-  global IP_MUTEX
-  if isAvailable() != 0 :
-    # print("verificou o ip")
-    responseJson = set_players()
-    IP_MUTEX = requestIP 
-  else :
-    responseJson = {'data': "Ocupado!"}
-    print("Ocupado...")
-
-  return responseJson
 
 def isAvailable() :
   response = os.system("ping -c 1 " + IP_MUTEX)
   # print("Response ping: " + str(response))
   return response
 
-def set_players():
+def savePositions(id_trainingResult):
+  for i in range(10):
+    position_ = PositionShot()
+    position_.training_id = id_trainingResult
+    position_.postiionX = random.randint(-100,100)
+    position_.postiionY = random.randint(-100,100)
 
-    bounces = hawkeye.get_bounces()
+    #Save in Database
+    db.session.add(position_)
+    db.session.commit()
 
-    response_bounces = {
-        'bounces': [
-            {
-              'x': bounces[0][0],
-              'y': bounces[0][1],
-            },
-            {
-              'x': bounces[1][0],
-              'y': bounces[1][1],
-            },
-            {
-              'x': bounces[2][0],
-              'y': bounces[2][1],
-            },
-            {
-              'x': bounces[3][0],
-              'y': bounces[3][1],
-            },
-            {
-              'x': bounces[4][0],
-              'y': bounces[4][1],
-            },
-            {
-              'x': bounces[5][0],
-              'y': bounces[5][1],
-            },
-            {
-              'x': bounces[6][0],
-              'y': bounces[6][1],
-            },
-            {
-              'x': bounces[7][0],
-              'y': bounces[7][1],
-            },
-            {
-              'x': bounces[8][0],
-              'y': bounces[8][1],
-            },
-            {
-              'x': bounces[9][0],
-              'y': bounces[9][1],
-            },
-        ]
-    }
+def saveTraining(request):
+  id_trainingResult_ = int(request.get_json()['id'])
+  ip_ = str(request.get_json()['ip'])
+  MAC = str(request.get_json()['mac'])
+  new_training = Training()
+  new_training.id_trainingResult = id_trainingResult_
+  new_training.mac = MAC
+  new_training.ip = ip_
 
-    """
-    {
-        'id': 12,
-        'position': -1,
-        'shots': [
-            50, 12, 33, 77
-        ]
-    }
-    """
-    # Sleep to simulate image processing
-    time.sleep(2)
+  #Save in Database
+  db.session.add(new_training)
+  db.session.commit()
 
-    # Print request to confirm post data
-    # print(request.json)
- 
-    # Save in file
-    """
-    {
-        'bounces': [
-            {
-              'x': 50,
-              'y': 30,
-            },
-            {
-              'x': -1,
-              'y': -1,
-            },...
-        ]
-    }
-    """
+  return new_training 
 
-    # print("\n")
-    # print(response_bounces)
-    return response_bounces
-    
+class AsynchronousAnalyze(Thread):
+    def __init__(self, new_training):
+        self.new_training = new_training
+        super(AsynchronousAnalyze, self).__init__()
+
+    def run(self):
+      self.result = self.analize_all_videos()
+      savePositions(self.new_training.id_training)
+      create_socket_notification()
+
+    def analize_all_videos(self):
+        list_results = []
+
+        for k in range(1, 10, 2):
+            thread_list = []
+            for i in range(k, k+2):
+                thread_list.append(AnalyzeVideo('../Dia23/video{}.h264'.format(i)))
+            
+            for index, thread in enumerate(thread_list):
+                thread.start()
+
+            for index, thread in enumerate(thread_list):
+                thread.join()
+                list_results.append(thread.candidate)
+
+        return list_results
+
+def create_socket_notification():
+  try:
+    s = socket.socket()
+    s.connect((IP_MUTEX , 4444))
+    s.send("Você é um batatão! Errou quase Tudo.".encode())
+    s.close()  
+  except:
+    print('Erro no socket')
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0')
