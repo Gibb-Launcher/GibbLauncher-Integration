@@ -103,8 +103,8 @@ def start_request():
     # Assynchronous
     #TODO add Thread to execute this block
     #TODO add hawkeye analyses here
-    analize = AsynchronousAnalyze(new_training)
-    analize.start()
+    analyze = AsynchronousAnalyze(new_training)
+    analyze.start()
     
     response = 'Ok'
 
@@ -243,11 +243,11 @@ class AsynchronousAnalyze(Thread):
         super(AsynchronousAnalyze, self).__init__()
 
     def run(self):
-      self.result = self.analize_all_videos()
+      self.result = self.analyze_all_videos()
       savePositions(self.new_training.id_training)
       create_socket_notification(self.new_training.id_training, self.new_training.mac)
 
-    def analize_all_videos(self):
+    def analyze_all_videos(self):
         list_results = []
 
         for k in range(1, 10, 2):
