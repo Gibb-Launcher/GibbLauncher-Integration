@@ -24,7 +24,7 @@ def create_graph(data):
 def detect_neighbor(position, item, data, graph):
     for index, candidate in data.items():
         distance = calc_distance(item, candidate)
-        if (distance <= 250) and ((candidate.data[2] >= item.data[2] + 1 and candidate.data[2] <= item.data[2] + 3)):
+        if (distance <= 100) and ((candidate.data[2] >= item.data[2] + 1 and candidate.data[2] <= item.data[2] + 3)):
             graph.add_edge(item, candidate)
 
 

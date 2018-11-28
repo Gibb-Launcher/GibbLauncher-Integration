@@ -15,28 +15,30 @@ def check_movement(shadow_frame, frame, balls_traking, timestamp):
 
     candidates = np.empty((0, 3))
     for contour in contours:
-        if cv2.contourArea(contour) < 20:
+        if cv2.contourArea(contour) < 10:
             continue
-
         M = cv2.moments(contour)
-        center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))  # aqui
+        if(M["m00"] == 0.0):
+            center = (M["m10"], M["m01"])
+        else:
+            center = (int(M["m10"] / M["m00"]), int(M["m01"] / M["m00"]))  # aqui
         candidates = np.append(candidates, np.array(
             [np.array([int(center[0]), int(center[1]), int(timestamp)])]), axis=0)
 
     points = np.empty((0, 3))
     if candidates.shape[0] > 1:
-        q1 = candidates[(candidates[:, 0] >= 0) & (candidates[:, 0] <= 200)]
-        q2 = candidates[(candidates[:, 0] > 200) & (candidates[:, 0] <= 400)]
-        q3 = candidates[(candidates[:, 0] > 400) & (candidates[:, 0] <= 600)]
-        q4 = candidates[(candidates[:, 0] > 600) & (candidates[:, 0] <= 800)]
+        q1 = candidates[(candidates[:, 0] >= 0) & (candidates[:, 0] <= 160)]
+        q2 = candidates[(candidates[:, 0] > 160) & (candidates[:, 0] <= 320)]
+        q3 = candidates[(candidates[:, 0] > 320) & (candidates[:, 0] <= 480)]
+        q4 = candidates[(candidates[:, 0] > 480) & (candidates[:, 0] <= 640)]
 
-        if q1.shape[0] <= 2:
+        if q1.shape[0] <= 3:
             points = np.append(points, q1, axis=0)
-        if q2.shape[0] <= 2:
+        if q2.shape[0] <= 3:
             points = np.append(points, q2, axis=0)
-        if q3.shape[0] <= 2:
+        if q3.shape[0] <= 3:
             points = np.append(points, q3, axis=0)
-        if q4.shape[0] <= 2:
+        if q4.shape[0] <= 3:
             points = np.append(points, q4, axis=0)
     elif candidates.shape[0] == 1:
         points = np.append(points, np.array(
@@ -67,15 +69,11 @@ class AnalyzeVideo(Thread):
         cap = cv2.VideoCapture(self.video_path)
 
         fgbg = cv2.createBackgroundSubtractorKNN(history=1)
-        centers = np.array([])
-
-        m = (800.0 - 549.0) / (541.0 - 387.0)
         number_frame = 0
         kernel = np.ones((5, 5), np.uint8)
-
-        crop_number = 1
         timestamp = 0
         candidates = []
+        
         while (True):
 
             ret, frame = cap.read()
@@ -88,7 +86,7 @@ class AnalyzeVideo(Thread):
 
                 fgmask = cv2.morphologyEx(
                     fgmask, cv2.MORPH_OPEN, cv2.getStructuringElement(cv2.MORPH_CROSS, (5, 5)))
-                fgmask = cv2.dilate(fgmask, kernel, iterations=3)
+                fgmask = cv2.dilate(fgmask, kernel, iterations=1)
                 fgmask = cv2.morphologyEx(fgmask, cv2.MORPH_ERODE, kernel)
 
                 fgmask = fgbg.apply(fgmask)
@@ -108,6 +106,7 @@ class AnalyzeVideo(Thread):
 
         cap.release()
         cv2.destroyAllWindows()
+        print(candidates)
         return candidate.start_verification(candidates)
 
 
@@ -134,7 +133,9 @@ def map_homography_point(bounce_x, bounce_y):
 if __name__ == '__main__':
     # init = AsynchronousAnalyze()
     # init.start()
-    pass
+    init = AnalyzeVideo('../Dia23/video2.h264')
+    init.start()
+    init.join()
 
     # candidate = analyze_video('videos/video002.h264')
     # if candidate is not None:
