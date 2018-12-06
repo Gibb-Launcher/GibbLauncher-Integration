@@ -106,13 +106,15 @@ class AnalyzeVideo(Thread):
 
         cap.release()
         cv2.destroyAllWindows()
-        print(candidates)
         return candidate.start_verification(candidates)
 
 
 def map_homography_point(bounce_x, bounce_y):
-    pts1 = np.float32([[219, 351], [545, 365], [10, 490], [793, 512]])
-    pts2 = np.float32([[0, 0], [800, 0], [0, 600], [800, 600]])
+    #pts1 = np.float32([[186, 153], [445, 148], [43, 251], [559, 250]])
+    # Pontos apresentação
+    pts1 = np.float32([[173, 146], [409,149], [43, 241], [518, 233]])
+
+    pts2 = np.float32([[0, 0], [640, 0], [0, 480], [640, 480]])
 
     # Ambos dão o mesmo resultado
     matrixH = cv2.getPerspectiveTransform(pts1, pts2)
@@ -123,9 +125,22 @@ def map_homography_point(bounce_x, bounce_y):
 
     # Calculate resulting matrix. resulting_matrix (1x3) = matrixH(3x3) * bounce_coord(1x3)
     resulting_matrix = xa.dot(xb)
+    
     xx = (resulting_matrix[0][0]/resulting_matrix[2][0])
     yy = (resulting_matrix[1][0]/resulting_matrix[2][0])
 
+    if(xx >= -50 and xx <0):
+        xx = 0
+        
+    if(xx > 640 and xx< 640+50):
+        xx = 620
+
+    if(yy >= -50 and yy <0):
+        yy = 0
+
+    if(yy > 480 and yy< 480+50):
+        yy = 460
+    
     homography_coord = [xx, yy]
     return homography_coord
 

@@ -7,6 +7,7 @@ ESQUERDA = 0
 CIMA = 1
 BAIXO = 0
 
+
 class Candidate():
     def __init__(self, data, noise=True):
         self.data = data
@@ -70,7 +71,6 @@ def check_radius(a, b, c, next_neighbors, actual_node, before_node, b_before_nod
                     dist_r = calc_distance(
                         predict,  is_parabola[neighbor.data[2]])
                     dist_n = calc_distance(predict, neighbor)
-                    print(dist_r)
                     if dist_r > dist_n:
                         is_parabola[neighbor.data[2]] = neighbor
                 else:
@@ -261,9 +261,9 @@ def check_bounces(curves):
         candidates = list(candidates.items())
         for index_candidate, candidate in enumerate(candidates):
             if index_candidate - 1 >= 0 and index_candidate + 1 < len(candidates) - 1:
-                if candidate[1][0][6] == BAIXO and candidate[1][0][5] == ESQUERDA:
-                    if candidates[index_candidate - 1][1][0][6] == BAIXO and candidates[index_candidate - 1][1][0][5] == ESQUERDA:
-                        if candidates[index_candidate + 1][1][0][6] == CIMA and candidates[index_candidate + 1][1][0][5] == ESQUERDA:
+                if candidate[1][0][6] == BAIXO and candidate[1][0][5] == DIREITA:
+                    if candidates[index_candidate - 1][1][0][6] == BAIXO and candidates[index_candidate - 1][1][0][5] == DIREITA:
+                        if candidates[index_candidate + 1][1][0][6] == CIMA and candidates[index_candidate + 1][1][0][5] == DIREITA:
                             bounces.append(candidate)
 
     return bounces
@@ -276,6 +276,13 @@ def start_verification(candidates):
     curves = separate_curves(filter_nodes)
     curves = define_direction(curves)
     bounces = check_bounces(curves)
+
+
+    if bounces:
+        k = filter_nodes[filter_nodes[:, 2] == bounces[0][1][0][2]]
+
+        bounces[0][1][0][0] = k[:, 0].mean()
+        bounces[0][1][0][1] = k[:, 1].mean()
 
     if (bounces is not None and bounces):
         return bounces
