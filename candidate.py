@@ -261,9 +261,9 @@ def check_bounces(curves):
         candidates = list(candidates.items())
         for index_candidate, candidate in enumerate(candidates):
             if index_candidate - 1 >= 0 and index_candidate + 1 < len(candidates) - 1:
-                if candidate[1][0][6] == BAIXO and candidate[1][0][5] == DIREITA:
-                    if candidates[index_candidate - 1][1][0][6] == BAIXO and candidates[index_candidate - 1][1][0][5] == DIREITA:
-                        if candidates[index_candidate + 1][1][0][6] == CIMA and candidates[index_candidate + 1][1][0][5] == DIREITA:
+                if candidate[1][0][6] == BAIXO and candidate[1][0][5] == ESQUERDA:
+                    if candidates[index_candidate - 1][1][0][6] == BAIXO and candidates[index_candidate - 1][1][0][5] == ESQUERDA:
+                        if candidates[index_candidate + 1][1][0][6] == CIMA and candidates[index_candidate + 1][1][0][5] == ESQUERDA:
                             bounces.append(candidate)
 
     return bounces
@@ -276,8 +276,7 @@ def start_verification(candidates):
     curves = separate_curves(filter_nodes)
     curves = define_direction(curves)
     bounces = check_bounces(curves)
-
-
+    
     if bounces:
         k = filter_nodes[filter_nodes[:, 2] == bounces[0][1][0][2]]
 

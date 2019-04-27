@@ -49,7 +49,7 @@ def check_movement(shadow_frame, frame, balls_traking, timestamp):
         balls_traking.append([int(point[0]), int(point[1]), int(point[2])])
 
 
-class AnalyzeVideo(Thread):
+class AnalyzeVideo():
     def __init__(self, video_path):
         self.candidate = None
         self.video_path = video_path
@@ -96,8 +96,8 @@ class AnalyzeVideo(Thread):
 
                 check_movement(frameRemoveShadow, frame, candidates, timestamp)
 
-                # cv2.imshow('foreground and background', frameRemoveShadow)
-                # cv2.imshow('rgb', frame)
+                cv2.imshow('foreground and background', frameRemoveShadow)
+                cv2.imshow('rgb', frame)
 
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
@@ -146,19 +146,15 @@ def map_homography_point(bounce_x, bounce_y):
 
 
 if __name__ == '__main__':
-    # init = AsynchronousAnalyze()
-    # init.start()
-    init = AnalyzeVideo('../Dia23/video2.h264')
-    init.start()
-    init.join()
+    init = AnalyzeVideo('video001.h264')
 
-    # candidate = analyze_video('videos/video002.h264')
-    # if candidate is not None:
-    #     #print("O candidato esta no frame :{}.\nEle é: {}".format(candidate[0][0], candidate[0][1]))
-    #     bounce_x = float(candidate[0][1][0][0])
-    #     bounce_y = float(candidate[0][1][0][1])
+    candidate = init.analyze_video()
+    if candidate is not None:
+        #print("O candidato esta no frame :{}.\nEle é: {}".format(candidate[0][0], candidate[0][1]))
+        bounce_x = float(candidate[0][1][0][0])
+        bounce_y = float(candidate[0][1][0][1])
 
-    #     homography_point = map_homography_point(bounce_x,bounce_y)
-    #     print(homography_point)
-    # else:
-    #     print("Provavelmente não houve quique!")
+        homography_point = map_homography_point(bounce_x,bounce_y)
+        print(homography_point)
+    else:
+        print("Provavelmente não houve quique!")
